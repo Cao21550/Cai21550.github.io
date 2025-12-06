@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>肖四(一) iPad最终完美重构版</title>
+    <!-- 引入 Tailwind CSS 和 Marked.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <style>
+        /* === 基础设置 === */
+        :root {
+            --sidebar-width: 320px;
+            --header-height: 64px;
+            --transition-speed: 0.3s;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; 
+            background-color: #f1f5f9; 
+            color: #1e293b; 
+            -webkit-tap-highlight-color: transparent;
+            touch-action: pan-y;
+            overflow: hidden; /* 防止 Body 滚动 */
+        }
+
+        /* === 布局核心 (解决居中问题的关键) === */
+        #app-layout {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 侧边栏样式 */
+        #sidebar {
+            width: var(--sidebar-width);
+            height: 100%;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+            transition: transform var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1), 
+                        margin-left var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, margin-left;
+        }
+
+        /* 桌面/横屏模式 (lg): 侧边栏挤占空间 */
+        @media (min-width: 1024px) {
+            #sidebar {
+                position: relative;
+                margin-left: 0;
+            }
+            #sidebar.closed {
+                margin-left: calc(var(--sidebar-width) * -1); /* 负 Margin 隐藏，主内容自动扩张 */
+            }
+            #mobile-overlay { display: none !important; } /* 桌面端不需要遮罩 */
+        }
+
+        /* 移动/竖屏模式 (< lg): 侧边栏悬浮覆盖 (抽屉) */
+        @media (max-width: 1023px) {
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                transform: translateX(-100%); /* 默认隐藏 */
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+        }
+
+        /* 主内容区 */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0; /* 防止 Flex 子项溢出 */
+            background-color: #f1f5f9;
+            position: relative;
+            transition: width var(--transition-speed) ease;
+        }
+
+        /* === 组件样式 === */
+        
+        /* 遮挡条 */
+        .cloze {
+            background-color: #cbd5e1;
+            color: transparent;
+            border-radius: 4px;
+            padding: 2px 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            margin: 0 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            font-weight: 600;
+            border-bottom: 2px solid #94a3b8;
+            display: inline-block;
+            vertical-align: middle;
+            min-width: 2em;
+        }
+        .cloze.revealed {
+            background-color: #fef08a;
+            color: #854d0e;
+            text-decoration: none;
+            border-bottom: none;
+            box-shadow: none;
+            padding: 2px 6px;
+        }
+        .cloze:active { transform: scale(0.96); }
+
+        /* Grid 折叠动画 (完美解决高度截断) */
+        .collapsible-grid {
+            display: grid;
+            grid-template-rows: 1fr;
+            transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            opacity: 1;
+        }
+        .collapsible-grid.collapsed {
+            grid-template-rows: 0fr;
+            opacity: 0;
+        }
+        .collapsible-inner {
+            overflow: hidden;
+        }
+
+        /* 滚动条隐藏 */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 动画杂项 */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; opacity: 0; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .group-arrow { transition: transform 0.3s; }
+        .nav-group.expanded .group-arrow { transform: rotate(90deg); }
+        .nav-sub-list { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .nav-group.expanded .nav-sub-list { max-height: 1000px; }
+
+        button:active { transform: scale(0.96); opacity: 0.9; }
+
+        /* Markdown */
+        .markdown-body h1 { font-size: 1.2em; font-weight: 800; margin-top: 1em; color: #1e293b; border-left: 4px solid #8b5cf6; padding-left: 10px; }
+        .markdown-body p { margin-bottom: 0.6em; line-height: 1.7; font-size: 1em; color: #334155; }
+        .markdown-body strong { color: #b91c1c; background: #fee2e2; padding: 2px 5px; border-radius: 4px; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.4em; color: #475569; }
+    </style>
+</head>
+<body>
+
+    <div id="app-layout">
+        
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class=""> <!-- 类名由 JS 动态管理 -->
+            <div class="h-16 border-b border-gray-100 flex justify-between items-center px-5 shrink-0 bg-gray-50/50 backdrop-blur-sm">
+                <h3 class="font-bold text-gray-700 text-base flex items-center gap-2">
+                    <span>📖</span> 题目导航
+                </h3>
+                <!-- 仅在移动端显示的关闭按钮 -->
+                <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-gray-600 p-2 rounded-lg active:bg-gray-200 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide" id="nav-list"></div>
+        </aside>
+
+        <!-- 移动端遮罩 -->
+        <div id="mobile-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/20 z-40 hidden backdrop-blur-sm transition-opacity opacity-0"></div>
+
+        <!-- 主内容区 -->
+        <main id="main-content">
+            
+            <!-- 顶部导航 (Sticky) -->
+            <header class="bg-white/90 backdrop-blur-md shadow-sm z-30 px-6 h-16 border-b border-gray-200 shrink-0 flex justify-between items-center sticky top-0">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="text-gray-500 hover:text-blue-600 focus:outline-none p-2 rounded-xl hover:bg-gray-100 transition active:bg-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <h1 class="text-lg font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                        🚀 肖四(一) <span class="hidden md:inline text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">重构版</span>
+                    </h1>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                     <div class="text-xs text-gray-400 font-mono hidden md:block bg-gray-50 px-2 py-1 rounded border border-gray-100" id="progress-text">Loading...</div>
+                    <button onclick="toggleSettings()" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100 transition transform hover:rotate-90 duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- 设置面板 -->
+                <div id="settings-panel" class="hidden absolute top-16 right-4 w-80 bg-white shadow-2xl rounded-2xl border border-gray-100 p-6 z-50 animate-[fadeIn_0.2s_ease-out]">
+                    <h3 class="font-bold text-gray-800 mb-4 text-sm flex items-center gap-2">🛠️ API 配置</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">接口地址</label>
+                            <input type="text" id="api-host" placeholder="https://api.chatanywhere.tech" class="w-full text-sm border border-gray-300 p-2.5 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">API Key</label>
+                            <input type="password" id="api-key" placeholder="sk-..." class="w-full text-sm border border-gray-300 p-2.5 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        </div>
+                        <button onclick="saveSettings()" class="w-full bg-blue-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 active:scale-95">保存设置</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 卡片展示区 (Flex 居中容器) -->
+            <!-- 核心修复：w-full + flex justify-center items-center 确保任何情况都居中 -->
+            <div class="flex-1 w-full flex justify-center items-start overflow-hidden relative">
+                
+                <!-- 卡片本体 -->
+                <!-- 核心修复：h-full + overflow-hidden 让内部滚动，自身不滚动 -->
+                <div id="card-container" class="w-full max-w-5xl h-full bg-white md:my-6 md:rounded-3xl shadow-none md:shadow-xl border-x-0 md:border md:border-gray-100 overflow-hidden flex flex-col transition-all duration-300">
+                    <!-- 动态内容渲染 -->
+                </div>
+
+                <!-- 底部提示 -->
+                <div class="absolute bottom-4 left-0 w-full text-center text-gray-400 text-xs font-medium select-none pointer-events-none opacity-60 z-0">
+                    ← 左右滑动切换题目 →
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // === 1. 全局配置 ===
+        let isLargeScreen = window.innerWidth >= 1024;
+        let isSidebarOpen = isLargeScreen; 
+        let currentIndex = 0;
+        let isAnswerCollapsed = false;
+        let isAiCollapsed = false;
+        let isAiGenerating = false;
+        
+        const aiCache = {};
+        const defaultConfig = { host: "https://api.chatanywhere.tech", key: "sk-P8qMcvE2FfWOmUePWPHaFyYkISs6DWAb55YMvoscHJpktbBp" };
+
+        const cards = [
+            { id: "34-1", subject: "马原 · 科技价值", q: "如何理解“向善惠民，始终是科技创新的价值取向”？", logic: "双刃剑 → 制度保障 → 真理与价值统一", a: `(1) 科技是双刃剑。其作用受<span class="cloze">社会制度</span>(客观)和<span class="cloze">观念认识</span>(主观)影响。正确运用首要有合理的<span class="cloze">社会制度保障</span>。<br><br>(2) 任何成功实践都是<span class="cloze">真理尺度</span>和<span class="cloze">价值尺度</span>的统一。推动科技向善惠民，才符合价值尺度，实现二者的统一。` },
+            { id: "34-2", subject: "马原 · 认识论", q: "为什么在鼓励创新的同时也要宽容失败？", logic: "转化论(真理/谬误) → 过程论(前进/曲折)", a: `(1) <span class="cloze">真理与谬误</span>、成功与失败能相互转化。错误往往是正确的先导。正视并修正错误，能实现谬误向真理的转化（在批判谬误中发展真理）。<br><br>(2) 事物发展是<span class="cloze">前进性与曲折性</span>的统一。既要坚定信心，又要重视曲折。` },
+            { id: "35-1", subject: "毛中特 · 新发展理念", q: "为何唯有新发展理念贯穿全过程，才能实现格局之变？", logic: "理念地位(先导) → 引领高质量发展 → 三大变革", a: `(1) 理念是行动的<span class="cloze">先导</span>，管全局、管根本。新发展理念回答了发展的目的、动力等问题。<br><br>(2) 它引领我们以<span class="cloze">高质量发展</span>为主题，推动<span class="cloze">质量、效率、动力</span>变革，实现质的有效提升和量的合理增长。` },
+            { id: "35-2", subject: "毛中特 · 高质量发展", q: "如何理解以“高质量发展的确定性”应对不确定性？", logic: "高质量定义 → 五大确定性(战略/政策/市场/韧性/环境)", a: `(1) 高质量发展是首要任务，提供<span class="cloze">物质基础</span>，是长治久安的必然要求。<br><br>(2) 五个“确定性”：<span class="cloze">发展战略</span>(方向)、<span class="cloze">宏观政策</span>(平稳)、<span class="cloze">市场空间</span>(潜力)、<span class="cloze">发展韧性</span>(抗压)、<span class="cloze">投资环境</span>(沃土)。` },
+            { id: "36-1", subject: "史纲 · 抗战意义", q: "如何理解抗战具有拯救人类文明、保卫世界和平的意义？", logic: "敌人性质 → 事实(最早/最长/代价最大) → 贡献", a: `(1) 日本法西斯是世界公敌。抗战是为<span class="cloze">国家生存、民族复兴、人类正义</span>而战。<br><br>(2) 事实：<span class="cloze">九一八</span>揭幕；<span class="cloze">七七事变</span>开辟首个大规模战场；中国是消灭日军的<span class="cloze">决定性力量</span>。<br><br>(3) 贡献：参与创建<span class="cloze">联合国</span>。` },
+            { id: "36-2", subject: "史纲 · 强军目标", q: "为什么要建设世界一流军队？", logic: "历史经验(枪杆子) → 现实需求(安全) → 止战逻辑", a: `(1) 历史：走出苦难依赖<span class="cloze">人民军队</span>。南昌起义标志独立领导武装的开端。<br><br>(2) 现实：强军是<span class="cloze">战略支撑</span>。只有军事强大，国家安全才有保障。<span class="cloze">能战方能止战</span>，必须以更强能力捍卫主权。` },
+            { id: "37-1", subject: "思修 · 英烈精神", q: "为何致敬英烈是青年的“精神洗礼”？", logic: "崇尚英雄 → 三观塑造 → 转化动力", a: `(1) 崇尚英雄才会产生英雄。国家不仅需要物质文明，更需要<span class="cloze">精神文明</span>。<br><br>(2) 传承精神是对<span class="cloze">三观</span>的洗礼，能转化为爱国情、强国志、报国行的<span class="cloze">内生动力</span>。` },
+            { id: "37-2", subject: "思修 · 青年担当", q: "青年如何将个人奋斗与国家命运联系？", logic: "理想融合 → 三点要求(心/志/能) → 创新", a: `(1) 实质：坚持<span class="cloze">个人理想与社会理想</span>的有机结合。<br><br>(2) 做法：①怀<span class="cloze">爱国之心</span>(立德之源)；②立<span class="cloze">报国之志</span>(融入大我)；③增强<span class="cloze">国之能</span>(练就本领)。<br><br>(3) 关键：发挥<span class="cloze">创新精神</span>，敢于突破。` },
+            { id: "38-1", subject: "当代 · 全球治理", q: "全球治理倡议与联合国宪章如何“一脉相承”？", logic: "联合国地位 → 倡议五大理念 → 目标一致", a: `(1) 联合国是践行<span class="cloze">多边主义</span>的核心平台。<br><br>(2) 倡议五大理念(<span class="cloze">主权平等、国际法治、多边主义、以人为本、行动导向</span>)阐明了治理原则。<br><br>(3) 二者精神一致，旨在支持联合国发挥核心作用，增强机制有效性。` },
+            { id: "38-2", subject: "当代 · 四大倡议", q: "“四大全球倡议”体现了怎样的外交理念？", logic: "理念(命运共同体) → 破解赤字 → 大国担当", a: `(1) 理念：构建<span class="cloze">人类命运共同体</span>，以天下之利为利。<br><br>(2) 功能：四大倡议分别破解<span class="cloze">和平、发展、安全、治理</span>四大赤字，注入稳定性。<br><br>(3) 意义：彰显<span class="cloze">大国担当</span>，提供战略引领。` }
+        ];
+
+        // === 2. 初始化 ===
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            applySidebarState();
+            renderCard(currentIndex);
+            renderNavList();
+            setupSwipe();
+            setupKeyboard();
+            
+            // 窗口变化监听
+            window.addEventListener('resize', () => {
+                const newIsLarge = window.innerWidth >= 1024;
+                if (newIsLarge !== isLargeScreen) {
+                    isLargeScreen = newIsLarge;
+                    // 如果切换了模式，重新应用侧边栏状态
+                    // 策略：大屏保持打开，小屏默认关闭
+                    if (isLargeScreen) {
+                        isSidebarOpen = true; 
+                    } else {
+                        isSidebarOpen = false;
+                    }
+                    applySidebarState();
+                }
+            });
+        });
+
+        // === 3. 侧边栏逻辑 (重构版) ===
+        function toggleSidebar() {
+            isSidebarOpen = !isSidebarOpen;
+            applySidebarState();
+        }
+
+        function applySidebarState() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+
+            // 先移除所有状态类，防止冲突
+            sidebar.classList.remove('closed', 'open');
+            overlay.classList.add('hidden', 'opacity-0');
+
+            if (isLargeScreen) {
+                // 桌面模式 (>=1024px)
+                // 侧边栏是 relative 的，通过 margin-left 控制显示/隐藏
+                // 此时主内容 flex-1 会自动占据剩余空间 -> 实现居中
+                if (!isSidebarOpen) {
+                    sidebar.classList.add('closed'); // margin-left: -320px
+                }
+            } else {
+                // 移动模式 (<1024px)
+                // 侧边栏是 fixed 的，覆盖在上面
+                if (isSidebarOpen) {
+                    sidebar.classList.add('open'); // transform: translateX(0)
+                    overlay.classList.remove('hidden');
+                    setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+                }
+            }
+        }
+
+        // === 4. 手势与键盘 ===
+        function setupSwipe() {
+            let touchStartX = 0;
+            let touchStartY = 0;
+            const container = document.getElementById('main-content'); 
+
+            container.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            container.addEventListener('touchend', e => {
+                const diffX = e.changedTouches[0].screenX - touchStartX;
+                const diffY = e.changedTouches[0].screenY - touchStartY;
+
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+                    if (diffX < 0) changeCard(1);
+                    else changeCard(-1);
+                }
+            }, { passive: true });
+        }
+
+        function setupKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') changeCard(-1);
+                if (e.key === 'ArrowRight') changeCard(1);
+            });
+        }
+
+        // === 5. 渲染逻辑 (UI 优化版) ===
+        function renderCard(index) {
+            const card = cards[index];
+            const container = document.getElementById('card-container');
+            const progress = document.getElementById('progress-text');
+            if(progress) progress.innerText = `Card ${index + 1} / ${cards.length}`;
+
+            isAnswerCollapsed = false;
+            isAiCollapsed = false;
+
+            const hasCache = !!aiCache[card.id];
+            const aiDisplayClass = hasCache ? "" : "hidden";
+
+            container.innerHTML = `
+                <div class="h-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 w-full shrink-0"></div>
+                
+                <!-- card-content: px-8 md:px-24 安全边距，底部 120px 留白确保不截断 -->
+                <div class="card-content p-6 px-8 md:px-24 md:py-10 flex flex-col h-full overflow-y-auto relative bg-white">
+                    
+                    <!-- 头部 -->
+                    <div class="mb-6 shrink-0 flex justify-between items-center">
+                        <span class="bg-indigo-50 text-indigo-700 text-sm md:text-base font-bold px-4 py-2 rounded-xl border border-indigo-100 tracking-wide shadow-sm inline-block">
+                            ${card.subject}
+                        </span>
+                    </div>
+                    
+                    <!-- 问题 -->
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-8 leading-snug shrink-0 tracking-tight select-none">
+                        ${card.q}
+                    </h2>
+
+                    <!-- 逻辑链 -->
+                    <div class="bg-blue-50 border-l-8 border-blue-500 p-5 mb-0 rounded-t-xl text-base md:text-lg text-blue-900 font-mono shrink-0 shadow-sm relative group/logic">
+                        <div class="flex items-start gap-3">
+                            <span class="text-2xl mt-0.5">🔗</span>
+                            <div>
+                                <div class="font-bold opacity-60 text-xs uppercase tracking-wider mb-1">Logic Chain</div>
+                                ${card.logic}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 嵌入式控制栏 -->
+                    <div class="flex flex-wrap justify-between items-center py-2 px-3 bg-gray-50 border-x border-b border-gray-100 mb-4 select-none rounded-b-xl shadow-sm">
+                        <!-- 左侧：全显/全隐 -->
+                        <div class="flex gap-2 p-1 rounded-lg">
+                            <button onclick="toggleAllCloze(true)" class="text-xs md:text-sm text-gray-600 px-3 py-1.5 rounded-md hover:bg-white hover:shadow-sm transition font-bold flex items-center gap-1 active:scale-95">👁️ 全显</button>
+                            <button onclick="toggleAllCloze(false)" class="text-xs md:text-sm text-gray-600 px-3 py-1.5 rounded-md hover:bg-white hover:shadow-sm transition font-bold flex items-center gap-1 active:scale-95">🙈 全隐</button>
+                        </div>
+
+                        <!-- 右侧：AI & 折叠 -->
+                        <div class="flex items-center gap-3">
+                            <button id="btn-ai-trigger" onclick="askAI()" class="flex items-center gap-1.5 text-violet-600 hover:text-violet-700 px-3 py-1.5 rounded-lg text-xs font-bold transition hover:bg-violet-50 active:scale-95">
+                                <span>✨</span>
+                                <span>${hasCache ? '查看解析' : '深度解析'}</span>
+                            </button>
+                            <div class="h-4 w-px bg-gray-300"></div>
+                            <button id="toggle-answer-btn" onclick="toggleAnswerVisibility()" class="text-gray-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-gray-100 transition active:scale-95 border border-transparent">
+                                <svg id="toggle-icon" class="w-5 h-5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 答案区域 (Grid 布局解决高度问题) -->
+                    <div id="answer-wrapper" class="collapsible-grid mb-8">
+                        <div class="collapsible-inner">
+                            <div class="text-lg md:text-xl text-gray-800 leading-9 relative">
+                                ${card.a}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI 内容区域 -->
+                    <div id="ai-result-box" class="${aiDisplayClass} ai-box bg-white rounded-3xl p-6 md:p-8 border-2 border-purple-100 shrink-0 relative group shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all mb-12">
+                        <div class="flex justify-between items-center mb-4 border-b border-purple-50 pb-3">
+                            <h4 class="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600 font-extrabold text-base md:text-lg flex items-center gap-2">
+                                <span class="text-2xl">🤖</span> AI 深度助记解析
+                            </h4>
+                            <div class="flex gap-2 items-center">
+                                <button onclick="askAI(true)" class="text-sm text-indigo-500 hover:text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition border border-indigo-100 flex items-center gap-1 font-bold" title="重新生成">
+                                    <span>🔄</span>
+                                </button>
+                                <button onclick="toggleAiVisibility()" class="text-sm text-gray-400 hover:text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition flex items-center gap-1 font-bold">
+                                    <svg id="ai-toggle-icon" class="w-4 h-4 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="ai-content-wrapper" class="collapsible-grid">
+                            <div class="collapsible-inner">
+                                <div id="ai-content" class="text-base md:text-lg text-gray-700 leading-relaxed markdown-body"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 底部占位，防止内容贴底 -->
+                    <div class="h-20 shrink-0"></div>
+                </div>
+            `;
+
+            document.querySelectorAll('.cloze').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    this.classList.toggle('revealed');
+                });
+            });
+
+            if (hasCache) {
+                renderMarkdownContent(aiCache[card.id], document.getElementById('ai-content'));
+            }
+            renderNavList();
+        }
+
+        // === 6. 交互逻辑 ===
+        function toggleAnswerVisibility() { toggleCollapse('answer-wrapper', 'toggle-icon'); }
+        function toggleAiVisibility() { toggleCollapse('ai-content-wrapper', 'ai-toggle-icon'); }
+
+        function toggleCollapse(wrapperId, iconId) {
+            const wrapper = document.getElementById(wrapperId);
+            const icon = document.getElementById(iconId);
+            const isCollapsed = wrapper.classList.contains('collapsed');
+
+            if (isCollapsed) {
+                wrapper.classList.remove('collapsed');
+                icon.classList.remove('rotate-180');
+            } else {
+                wrapper.classList.add('collapsed');
+                icon.classList.add('rotate-180');
+            }
+        }
+
+        function toggleAllCloze(show) {
+            document.querySelectorAll('.cloze').forEach(el => {
+                if (show) el.classList.add('revealed'); else el.classList.remove('revealed');
+            });
+        }
+
+        // === 7. AI 请求 ===
+        async function askAI(forceRegenerate = false) {
+            if (isAiGenerating) return;
+            const card = cards[currentIndex];
+            const aiBox = document.getElementById('ai-result-box');
+            const aiContent = document.getElementById('ai-content');
+            const btn = document.getElementById('btn-ai-trigger');
+            
+            // 确保 AI 区域是展开的
+            const aiWrapper = document.getElementById('ai-content-wrapper');
+            if(aiWrapper && aiWrapper.classList.contains('collapsed')) toggleAiVisibility();
+
+            if (!forceRegenerate && aiCache[card.id]) {
+                aiBox.classList.remove('hidden');
+                setTimeout(() => { 
+                    const container = document.querySelector('.card-content'); 
+                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }); 
+                }, 100);
+                return;
+            }
+
+            isAiGenerating = true;
+            const originalBtnHtml = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin h-3 w-3 text-violet-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 思考中...`;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+            aiBox.classList.remove('hidden');
+            aiContent.innerHTML = '<div class="text-center py-10"><p class="text-gray-400 text-lg italic animate-pulse">✨ AI 正在提取考点...</p></div>';
+            
+            setTimeout(() => { const container = document.querySelector('.card-content'); container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }); }, 100);
+
+            const prompt = `你是一名金牌政治考研名师。请针对这道题提供【记忆顺口溜】和【深度解析】。
+            题目：${card.q}
+            逻辑：${card.logic}
+            答案要点：${card.a.replace(/<[^>]+>/g, "").replace(/\[cite:.*?\]/g, "")}
+            
+            请严格按照以下 Markdown 格式输出：
+            ### ⚡ 记忆顺口溜
+            > (一句押韵、好记的顺口溜)
+            ### 🧠 深度解析
+            (无序列表解析核心考点，重点词加粗，条理清晰)
+            `;
+
+            try {
+                let endpoint = localStorage.getItem('apiHost') || defaultConfig.host;
+                let key = localStorage.getItem('apiKey') || defaultConfig.key;
+                if (!endpoint.includes('/v1/chat/completions')) endpoint = endpoint.replace(/\/$/, '') + '/v1/chat/completions';
+
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    mode: 'cors',
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0.6
+                    })
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                const reply = data.choices[0].message.content;
+                
+                aiCache[card.id] = reply;
+                btn.innerHTML = `<span>📑 查看解析</span>`;
+                renderMarkdownContent(reply, aiContent);
+
+            } catch (error) {
+                aiContent.innerHTML = `<div class="text-red-500 bg-red-50 p-4 rounded-xl text-base border border-red-200">⚠️ 请求失败：${error.message}<br><span class="text-sm text-gray-500">请检查右上角设置中的配置。</span></div>`;
+                btn.innerHTML = originalBtnHtml;
+            } finally {
+                isAiGenerating = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        }
+
+        function renderNavList() {
+            const list = document.getElementById('nav-list');
+            const groups = {};
+            cards.forEach((card, idx) => {
+                const groupKey = card.id.split('-')[0];
+                const subject = card.subject.split(' · ')[0];
+                if (!groups[groupKey]) groups[groupKey] = { title: `第${groupKey}题 ${subject}`, items: [] };
+                groups[groupKey].items.push({ ...card, originalIndex: idx });
+            });
+
+            const currentCardId = cards[currentIndex].id.split('-')[0];
+            list.innerHTML = Object.values(groups).map(group => {
+                const isActive = group.items.some(i => i.originalIndex === currentIndex);
+                const expandedClass = isActive ? 'expanded' : '';
+                return `
+                <div class="nav-group ${expandedClass} mb-2">
+                    <div onclick="this.parentElement.classList.toggle('expanded')" class="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-blue-50 rounded-xl select-none text-gray-700 transition-colors ${isActive ? 'bg-blue-50 text-blue-700' : ''}">
+                        <span class="font-bold text-base">${group.title}</span>
+                        <svg class="group-arrow w-4 h-4 text-gray-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </div>
+                    <div class="nav-sub-list space-y-1 pl-2">
+                        ${group.items.map(item => `
+                            <div onclick="jumpToCard(${item.originalIndex})" class="flex items-center gap-3 px-4 py-3 cursor-pointer rounded-xl transition-colors text-sm md:text-base ${item.originalIndex === currentIndex ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'}">
+                                <span class="font-mono text-xs opacity-70 w-8">${item.id}</span>
+                                <span class="truncate font-medium">${item.subject.split(' · ')[1] || item.subject}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function jumpToCard(idx) {
+            currentIndex = idx;
+            renderCard(currentIndex);
+            // 移动端点击后自动关闭侧边栏
+            if (window.innerWidth < 1024) { isSidebarOpen = false; applySidebarState(); }
+        }
+
+        function changeCard(dir) {
+            const newIndex = currentIndex + dir;
+            if (newIndex >= 0 && newIndex < cards.length) {
+                currentIndex = newIndex;
+                renderCard(currentIndex);
+            }
+        }
+
+        function loadSettings() {
+            document.getElementById('api-host').value = localStorage.getItem('apiHost') || defaultConfig.host;
+            document.getElementById('api-key').value = localStorage.getItem('apiKey') || defaultConfig.key;
+        }
+        function saveSettings() {
+            localStorage.setItem('apiHost', document.getElementById('api-host').value.trim() || defaultConfig.host);
+            localStorage.setItem('apiKey', document.getElementById('api-key').value.trim() || defaultConfig.key);
+            toggleSettings();
+            alert('✅ 设置已保存');
+        }
+        function toggleSettings() { document.getElementById('settings-panel').classList.toggle('hidden'); }
+        function renderMarkdownContent(text, el) {
+            el.classList.add('fade-in');
+            el.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : text.replace(/\n/g, '<br>');
+            setTimeout(() => { const container = document.querySelector('.card-content'); container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }); }, 100);
+        }
+    </script>
+</body>
+</html>
