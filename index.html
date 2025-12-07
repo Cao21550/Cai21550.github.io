@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>肖四(一) iPad最终完美重构版</title>
+    <title>肖四(一) iPad循环翻页版</title>
     <!-- 引入 Tailwind CSS 和 Marked.js -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/marked/9.1.2/marked.min.js"></script>
@@ -12,6 +12,7 @@
         :root {
             --sidebar-width: 320px;
             --header-height: 64px;
+            --footer-height: 70px; /* 定义底栏高度 */
             --transition-speed: 0.3s;
         }
 
@@ -21,10 +22,10 @@
             color: #1e293b; 
             -webkit-tap-highlight-color: transparent;
             touch-action: pan-y;
-            overflow: hidden; /* 防止 Body 滚动 */
+            overflow: hidden;
         }
 
-        /* === 布局核心 (解决居中问题的关键) === */
+        /* === 布局核心 === */
         #app-layout {
             display: flex;
             width: 100vw;
@@ -46,25 +47,25 @@
             will-change: transform, margin-left;
         }
 
-        /* 桌面/横屏模式 (lg): 侧边栏挤占空间 */
+        /* 桌面/横屏模式 (lg) */
         @media (min-width: 1024px) {
             #sidebar {
                 position: relative;
                 margin-left: 0;
             }
             #sidebar.closed {
-                margin-left: calc(var(--sidebar-width) * -1); /* 负 Margin 隐藏，主内容自动扩张 */
+                margin-left: calc(var(--sidebar-width) * -1); 
             }
-            #mobile-overlay { display: none !important; } /* 桌面端不需要遮罩 */
+            #mobile-overlay { display: none !important; }
         }
 
-        /* 移动/竖屏模式 (< lg): 侧边栏悬浮覆盖 (抽屉) */
+        /* 移动/竖屏模式 (< lg) */
         @media (max-width: 1023px) {
             #sidebar {
                 position: fixed;
                 top: 0;
                 left: 0;
-                transform: translateX(-100%); /* 默认隐藏 */
+                transform: translateX(-100%);
             }
             #sidebar.open {
                 transform: translateX(0);
@@ -76,7 +77,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-width: 0; /* 防止 Flex 子项溢出 */
+            min-width: 0;
             background-color: #f1f5f9;
             position: relative;
             transition: width var(--transition-speed) ease;
@@ -111,7 +112,7 @@
         }
         .cloze:active { transform: scale(0.96); }
 
-        /* Grid 折叠动画 (完美解决高度截断) */
+        /* Grid 折叠动画 */
         .collapsible-grid {
             display: grid;
             grid-template-rows: 1fr;
@@ -160,7 +161,6 @@
                 <h3 class="font-bold text-gray-700 text-base flex items-center gap-2">
                     <span>📖</span> 题目导航
                 </h3>
-                <!-- 仅在移动端显示的关闭按钮 -->
                 <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-gray-600 p-2 rounded-lg active:bg-gray-200 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -185,12 +185,11 @@
                         </svg>
                     </button>
                     <h1 class="text-lg font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                        🚀 肖四(一) <span class="hidden md:inline text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">重构版</span>
+                        🚀 肖四(一) <span class="hidden md:inline text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">固定底栏版</span>
                     </h1>
                 </div>
                 
                 <div class="flex items-center gap-3">
-                     <div class="text-xs text-gray-400 font-mono hidden md:block bg-gray-50 px-2 py-1 rounded border border-gray-100" id="progress-text">Loading...</div>
                     <button onclick="toggleSettings()" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100 transition transform hover:rotate-90 duration-300">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -217,20 +216,36 @@
             </header>
 
             <!-- 卡片展示区 (Flex 居中容器) -->
-            <!-- 核心修复：w-full + flex justify-center items-center 确保任何情况都居中 -->
+            <!-- flex-1 占据中间剩余空间，确保 Header 和 Footer 不会被挤压 -->
             <div class="flex-1 w-full flex justify-center items-start overflow-hidden relative">
-                
-                <!-- 卡片本体 -->
-                <!-- 核心修复：h-full + overflow-hidden 让内部滚动，自身不滚动 -->
-                <div id="card-container" class="w-full max-w-5xl h-full bg-white md:my-6 md:rounded-3xl shadow-none md:shadow-xl border-x-0 md:border md:border-gray-100 overflow-hidden flex flex-col transition-all duration-300">
+                <div id="card-container" class="w-full max-w-5xl h-full bg-white md:my-4 md:rounded-3xl shadow-none md:shadow-xl border-x-0 md:border md:border-gray-100 overflow-hidden flex flex-col transition-all duration-300">
                     <!-- 动态内容渲染 -->
                 </div>
-
-                <!-- 底部提示 -->
-                <div class="absolute bottom-4 left-0 w-full text-center text-gray-400 text-xs font-medium select-none pointer-events-none opacity-60 z-0">
-                    ← 左右滑动切换题目 →
-                </div>
             </div>
+
+            <!-- 固定底部导航栏 (Footer) -->
+            <!-- 位于主内容下方，物理隔离 -->
+            <footer class="bg-white/85 backdrop-blur-md border-t border-gray-200 h-[70px] shrink-0 flex justify-between items-center px-4 md:px-10 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <!-- 上一题 -->
+                <button id="btn-prev-footer" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-600 shadow-sm active:bg-gray-50 active:scale-95 transition min-w-[100px] justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span class="font-bold text-sm">上一题</span>
+                </button>
+
+                <!-- 进度 -->
+                <span class="font-mono text-sm font-bold text-gray-400 select-none" id="footer-progress">1 / 10</span>
+
+                <!-- 下一题 -->
+                <button id="btn-next-footer" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-600 border border-blue-600 text-white shadow-md active:bg-blue-700 active:scale-95 transition min-w-[100px] justify-center">
+                    <span class="font-bold text-sm">下一题</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </footer>
+
         </main>
     </div>
 
@@ -267,14 +282,13 @@
             renderNavList();
             setupSwipe();
             setupKeyboard();
+            setupFooterButtons(); // 绑定底栏事件
             
             // 窗口变化监听
             window.addEventListener('resize', () => {
                 const newIsLarge = window.innerWidth >= 1024;
                 if (newIsLarge !== isLargeScreen) {
                     isLargeScreen = newIsLarge;
-                    // 如果切换了模式，重新应用侧边栏状态
-                    // 策略：大屏保持打开，小屏默认关闭
                     if (isLargeScreen) {
                         isSidebarOpen = true; 
                     } else {
@@ -285,7 +299,7 @@
             });
         });
 
-        // === 3. 侧边栏逻辑 (重构版) ===
+        // === 3. 侧边栏逻辑 ===
         function toggleSidebar() {
             isSidebarOpen = !isSidebarOpen;
             applySidebarState();
@@ -295,22 +309,18 @@
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('mobile-overlay');
 
-            // 先移除所有状态类，防止冲突
             sidebar.classList.remove('closed', 'open');
             overlay.classList.add('hidden', 'opacity-0');
 
             if (isLargeScreen) {
                 // 桌面模式 (>=1024px)
-                // 侧边栏是 relative 的，通过 margin-left 控制显示/隐藏
-                // 此时主内容 flex-1 会自动占据剩余空间 -> 实现居中
                 if (!isSidebarOpen) {
-                    sidebar.classList.add('closed'); // margin-left: -320px
+                    sidebar.classList.add('closed');
                 }
             } else {
                 // 移动模式 (<1024px)
-                // 侧边栏是 fixed 的，覆盖在上面
                 if (isSidebarOpen) {
-                    sidebar.classList.add('open'); // transform: translateX(0)
+                    sidebar.classList.add('open');
                     overlay.classList.remove('hidden');
                     setTimeout(() => overlay.classList.remove('opacity-0'), 10);
                 }
@@ -346,12 +356,19 @@
             });
         }
 
-        // === 5. 渲染逻辑 (UI 优化版) ===
+        function setupFooterButtons() {
+            document.getElementById('btn-prev-footer').addEventListener('click', () => changeCard(-1));
+            document.getElementById('btn-next-footer').addEventListener('click', () => changeCard(1));
+        }
+
+        // === 5. 核心渲染 logic ===
         function renderCard(index) {
             const card = cards[index];
             const container = document.getElementById('card-container');
-            const progress = document.getElementById('progress-text');
-            if(progress) progress.innerText = `Card ${index + 1} / ${cards.length}`;
+            const footerProgress = document.getElementById('footer-progress');
+            
+            // 更新底部进度
+            if(footerProgress) footerProgress.innerText = `${index + 1} / ${cards.length}`;
 
             isAnswerCollapsed = false;
             isAiCollapsed = false;
@@ -362,8 +379,8 @@
             container.innerHTML = `
                 <div class="h-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 w-full shrink-0"></div>
                 
-                <!-- card-content: px-8 md:px-24 安全边距，底部 120px 留白确保不截断 -->
-                <div class="card-content p-6 px-8 md:px-24 md:py-10 flex flex-col h-full overflow-y-auto relative bg-white">
+                <!-- 嵌入式内容：底部padding-bottom不再需要特别大，因为footer是外部的 -->
+                <div class="card-content p-6 px-12 md:px-24 md:py-10 flex flex-col h-full overflow-y-auto relative">
                     
                     <!-- 头部 -->
                     <div class="mb-6 shrink-0 flex justify-between items-center">
@@ -411,7 +428,7 @@
                         </div>
                     </div>
 
-                    <!-- 答案区域 (Grid 布局解决高度问题) -->
+                    <!-- 答案区域 -->
                     <div id="answer-wrapper" class="collapsible-grid mb-8">
                         <div class="collapsible-inner">
                             <div class="text-lg md:text-xl text-gray-800 leading-9 relative">
@@ -444,8 +461,7 @@
                         </div>
                     </div>
                     
-                    <!-- 底部占位，防止内容贴底 -->
-                    <div class="h-20 shrink-0"></div>
+                    <div class="h-10 shrink-0"></div>
                 </div>
             `;
 
@@ -462,7 +478,7 @@
             renderNavList();
         }
 
-        // === 6. 交互逻辑 ===
+        // === 6. 交互功能 ===
         function toggleAnswerVisibility() { toggleCollapse('answer-wrapper', 'toggle-icon'); }
         function toggleAiVisibility() { toggleCollapse('ai-content-wrapper', 'ai-toggle-icon'); }
 
@@ -494,16 +510,12 @@
             const aiContent = document.getElementById('ai-content');
             const btn = document.getElementById('btn-ai-trigger');
             
-            // 确保 AI 区域是展开的
             const aiWrapper = document.getElementById('ai-content-wrapper');
             if(aiWrapper && aiWrapper.classList.contains('collapsed')) toggleAiVisibility();
 
             if (!forceRegenerate && aiCache[card.id]) {
                 aiBox.classList.remove('hidden');
-                setTimeout(() => { 
-                    const container = document.querySelector('.card-content'); 
-                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }); 
-                }, 100);
+                setTimeout(() => { const container = document.querySelector('.card-content'); container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }); }, 100);
                 return;
             }
 
@@ -562,6 +574,13 @@
             }
         }
 
+        // === 8. 翻页逻辑 (循环翻页) ===
+        function changeCard(dir) {
+            // 循环翻页计算
+            currentIndex = (currentIndex + dir + cards.length) % cards.length;
+            renderCard(currentIndex);
+        }
+
         function renderNavList() {
             const list = document.getElementById('nav-list');
             const groups = {};
@@ -597,16 +616,7 @@
         function jumpToCard(idx) {
             currentIndex = idx;
             renderCard(currentIndex);
-            // 移动端点击后自动关闭侧边栏
             if (window.innerWidth < 1024) { isSidebarOpen = false; applySidebarState(); }
-        }
-
-        function changeCard(dir) {
-            const newIndex = currentIndex + dir;
-            if (newIndex >= 0 && newIndex < cards.length) {
-                currentIndex = newIndex;
-                renderCard(currentIndex);
-            }
         }
 
         function loadSettings() {
