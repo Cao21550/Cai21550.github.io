@@ -3,22 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>肖四(一) iPad循环翻页版</title>
+    <title>肖四全套(1-4) | 名师带背终极版</title>
     <!-- 引入 Tailwind CSS 和 Marked.js -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/marked/9.1.2/marked.min.js"></script>
     <style>
         /* === 基础设置 === */
         :root {
-            --sidebar-width: 320px;
-            --header-height: 64px;
-            --footer-height: 70px; /* 定义底栏高度 */
+            --sidebar-width: 320px; 
             --transition-speed: 0.3s;
+            --primary-color: #4f46e5; /* Indigo 600 */
         }
 
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; 
-            background-color: #f1f5f9; 
+            background-color: #f8fafc; 
             color: #1e293b; 
             -webkit-tap-highlight-color: transparent;
             touch-action: pan-y;
@@ -26,14 +25,9 @@
         }
 
         /* === 布局核心 === */
-        #app-layout {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-        }
+        #app-layout { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
 
-        /* 侧边栏样式 */
+        /* 侧边栏 */
         #sidebar {
             width: var(--sidebar-width);
             height: 100%;
@@ -47,29 +41,15 @@
             will-change: transform, margin-left;
         }
 
-        /* 桌面/横屏模式 (lg) */
+        /* 响应式控制 */
         @media (min-width: 1024px) {
-            #sidebar {
-                position: relative;
-                margin-left: 0;
-            }
-            #sidebar.closed {
-                margin-left: calc(var(--sidebar-width) * -1); 
-            }
+            #sidebar { position: relative; margin-left: 0; }
+            #sidebar.closed { margin-left: calc(var(--sidebar-width) * -1); }
             #mobile-overlay { display: none !important; }
         }
-
-        /* 移动/竖屏模式 (< lg) */
         @media (max-width: 1023px) {
-            #sidebar {
-                position: fixed;
-                top: 0;
-                left: 0;
-                transform: translateX(-100%);
-            }
-            #sidebar.open {
-                transform: translateX(0);
-            }
+            #sidebar { position: fixed; top: 0; left: 0; transform: translateX(-100%); }
+            #sidebar.open { transform: translateX(0); }
         }
 
         /* 主内容区 */
@@ -83,72 +63,52 @@
             transition: width var(--transition-speed) ease;
         }
 
-        /* === 组件样式 === */
-        
-        /* 遮挡条 */
+        /* === 核心组件：带背遮挡条 === */
         .cloze {
             background-color: #cbd5e1;
             color: transparent;
             border-radius: 4px;
-            padding: 2px 6px;
+            padding: 1px 4px;
             cursor: pointer;
             user-select: none;
             transition: all 0.2s;
             margin: 0 2px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            font-weight: 600;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-weight: 700;
             border-bottom: 2px solid #94a3b8;
             display: inline-block;
-            vertical-align: middle;
-            min-width: 2em;
+            vertical-align: baseline;
+            min-width: 1.5em;
+            line-height: 1.4;
         }
         .cloze.revealed {
-            background-color: #fef08a;
+            background-color: #fef08a; /* 荧光黄高亮 */
             color: #854d0e;
             text-decoration: none;
             border-bottom: none;
             box-shadow: none;
-            padding: 2px 6px;
+            padding: 0 2px;
         }
         .cloze:active { transform: scale(0.96); }
 
         /* Grid 折叠动画 */
-        .collapsible-grid {
-            display: grid;
-            grid-template-rows: 1fr;
-            transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-            opacity: 1;
-        }
-        .collapsible-grid.collapsed {
-            grid-template-rows: 0fr;
-            opacity: 0;
-        }
-        .collapsible-inner {
-            overflow: hidden;
-        }
+        .collapsible-grid { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease; opacity: 1; }
+        .collapsible-grid.collapsed { grid-template-rows: 0fr; opacity: 0; }
+        .collapsible-inner { overflow: hidden; }
 
         /* 滚动条隐藏 */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 试卷选择器 */
+        .paper-btn { @apply px-2 py-2 rounded-lg text-xs font-bold transition-all duration-200 border text-center cursor-pointer select-none; }
+        .paper-btn.active { @apply bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105; }
+        .paper-btn.inactive { @apply bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-700; }
 
-        /* 动画杂项 */
+        /* 动画 */
         .fade-in { animation: fadeIn 0.4s ease-out forwards; opacity: 0; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .group-arrow { transition: transform 0.3s; }
-        .nav-group.expanded .group-arrow { transform: rotate(90deg); }
-        .nav-sub-list { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-        .nav-group.expanded .nav-sub-list { max-height: 1000px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         button:active { transform: scale(0.96); opacity: 0.9; }
-
-        /* Markdown */
-        .markdown-body h1 { font-size: 1.2em; font-weight: 800; margin-top: 1em; color: #1e293b; border-left: 4px solid #8b5cf6; padding-left: 10px; }
-        .markdown-body p { margin-bottom: 0.6em; line-height: 1.7; font-size: 1em; color: #334155; }
-        .markdown-body strong { color: #b91c1c; background: #fee2e2; padding: 2px 5px; border-radius: 4px; }
-        .markdown-body ul { list-style-type: disc; padding-left: 1.4em; color: #475569; }
     </style>
 </head>
 <body>
@@ -156,93 +116,96 @@
     <div id="app-layout">
         
         <!-- 侧边栏 -->
-        <aside id="sidebar" class=""> <!-- 类名由 JS 动态管理 -->
-            <div class="h-16 border-b border-gray-100 flex justify-between items-center px-5 shrink-0 bg-gray-50/50 backdrop-blur-sm">
-                <h3 class="font-bold text-gray-700 text-base flex items-center gap-2">
-                    <span>📖</span> 题目导航
-                </h3>
-                <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-gray-600 p-2 rounded-lg active:bg-gray-200 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+        <aside id="sidebar" class="bg-white border-r border-gray-200 flex flex-col z-50 shadow-xl lg:shadow-none h-full">
+            <!-- 侧边栏头部 -->
+            <div class="flex flex-col border-b border-gray-100 bg-gray-50/80 backdrop-blur-sm shrink-0">
+                <div class="h-14 flex justify-between items-center px-4">
+                    <h3 class="font-extrabold text-gray-800 text-base flex items-center gap-2">
+                        <span>📚</span> 肖四 · 题目列表
+                    </h3>
+                    <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-gray-600 p-2 rounded-lg active:bg-gray-200 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <!-- 注意：试卷切换 Grid 已从此处移除 -->
             </div>
-            <div class="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide" id="nav-list"></div>
+
+            <!-- 题目列表 -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide" id="nav-list"></div>
+            
+            <div class="p-3 text-center text-[10px] text-gray-400 border-t border-gray-100 bg-white">
+                Tips: 点击灰色方块揭晓核心考点
+            </div>
         </aside>
 
         <!-- 移动端遮罩 -->
         <div id="mobile-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/20 z-40 hidden backdrop-blur-sm transition-opacity opacity-0"></div>
 
         <!-- 主内容区 -->
-        <main id="main-content">
+        <main id="main-content" class="flex-1 flex flex-col h-full bg-gray-100 relative min-w-0 transition-all duration-300">
             
-            <!-- 顶部导航 (Sticky) -->
-            <header class="bg-white/90 backdrop-blur-md shadow-sm z-30 px-6 h-16 border-b border-gray-200 shrink-0 flex justify-between items-center sticky top-0">
-                <div class="flex items-center gap-4">
-                    <button onclick="toggleSidebar()" class="text-gray-500 hover:text-blue-600 focus:outline-none p-2 rounded-xl hover:bg-gray-100 transition active:bg-gray-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+            <!-- 顶部导航 -->
+            <header class="bg-white/90 backdrop-blur-md shadow-sm z-30 px-4 md:px-6 h-14 border-b border-gray-200 shrink-0 flex justify-between items-center sticky top-0">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="text-gray-500 hover:text-indigo-600 focus:outline-none p-2 rounded-xl hover:bg-gray-100 transition active:bg-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
-                    <h1 class="text-lg font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                        🚀 肖四(一) <span class="hidden md:inline text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">固定底栏版</span>
-                    </h1>
+                    <!-- 居中标题 -->
+                    <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+                        <h1 class="text-lg font-extrabold text-gray-900 tracking-tight" id="header-title">
+                            肖四(一) <span class="hidden md:inline text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-medium">重点必背</span>
+                        </h1>
+                    </div>
                 </div>
                 
                 <div class="flex items-center gap-3">
-                    <button onclick="toggleSettings()" class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100 transition transform hover:rotate-90 duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                    <button onclick="toggleSettings()" class="text-gray-400 hover:text-indigo-600 p-2 rounded-full hover:bg-gray-100 transition transform hover:rotate-90 duration-300" title="API设置">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     </button>
                 </div>
                 
                 <!-- 设置面板 -->
-                <div id="settings-panel" class="hidden absolute top-16 right-4 w-80 bg-white shadow-2xl rounded-2xl border border-gray-100 p-6 z-50 animate-[fadeIn_0.2s_ease-out]">
-                    <h3 class="font-bold text-gray-800 mb-4 text-sm flex items-center gap-2">🛠️ API 配置</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 mb-1">接口地址</label>
-                            <input type="text" id="api-host" placeholder="https://api.chatanywhere.tech" class="w-full text-sm border border-gray-300 p-2.5 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 mb-1">API Key</label>
-                            <input type="password" id="api-key" placeholder="sk-..." class="w-full text-sm border border-gray-300 p-2.5 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        </div>
-                        <button onclick="saveSettings()" class="w-full bg-blue-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 active:scale-95">保存设置</button>
+                <div id="settings-panel" class="hidden absolute top-14 right-4 w-72 bg-white shadow-2xl rounded-2xl border border-gray-100 p-5 z-50 animate-[fadeIn_0.2s_ease-out]">
+                    <h3 class="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">🛠️ API 配置</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="api-host" placeholder="Host (默认ChatAnywhere)" class="w-full text-xs border border-gray-300 p-2 rounded-lg bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <input type="password" id="api-key" placeholder="API Key" class="w-full text-xs border border-gray-300 p-2 rounded-lg bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <button onclick="saveSettings()" class="w-full bg-indigo-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-indigo-700 active:scale-95">保存设置</button>
                     </div>
                 </div>
             </header>
 
-            <!-- 卡片展示区 (Flex 居中容器) -->
-            <!-- flex-1 占据中间剩余空间，确保 Header 和 Footer 不会被挤压 -->
-            <div class="flex-1 w-full flex justify-center items-start overflow-hidden relative">
-                <div id="card-container" class="w-full max-w-5xl h-full bg-white md:my-4 md:rounded-3xl shadow-none md:shadow-xl border-x-0 md:border md:border-gray-100 overflow-hidden flex flex-col transition-all duration-300">
-                    <!-- 动态内容渲染 -->
+            <!-- 【新增】常驻试卷切换栏 -->
+            <div class="bg-white/80 backdrop-blur-md border-b border-gray-200 py-2 px-4 shrink-0 z-20 shadow-[0_2px_4px_-2px_rgba(0,0,0,0.05)]">
+                <div class="max-w-2xl mx-auto grid grid-cols-4 gap-2 md:gap-4">
+                    <button onclick="switchSet('set1')" id="btn-set1" class="paper-btn active">第一套</button>
+                    <button onclick="switchSet('set2')" id="btn-set2" class="paper-btn inactive">第二套</button>
+                    <button onclick="switchSet('set3')" id="btn-set3" class="paper-btn inactive">第三套</button>
+                    <button onclick="switchSet('set4')" id="btn-set4" class="paper-btn inactive">第四套</button>
                 </div>
             </div>
 
-            <!-- 固定底部导航栏 (Footer) -->
-            <!-- 位于主内容下方，物理隔离 -->
-            <footer class="bg-white/85 backdrop-blur-md border-t border-gray-200 h-[70px] shrink-0 flex justify-between items-center px-4 md:px-10 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                <!-- 上一题 -->
-                <button id="btn-prev-footer" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-600 shadow-sm active:bg-gray-50 active:scale-95 transition min-w-[100px] justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    <span class="font-bold text-sm">上一题</span>
+            <!-- 卡片容器 -->
+            <div class="flex-1 w-full flex justify-center items-start overflow-hidden relative">
+                <div id="card-container" class="w-full max-w-5xl h-full bg-white md:my-4 md:rounded-3xl shadow-none md:shadow-xl border-x-0 md:border md:border-gray-100 overflow-hidden flex flex-col transition-all duration-300">
+                    <!-- 动态内容 -->
+                </div>
+            </div>
+
+            <!-- 固定底部导航栏 -->
+            <footer class="bg-white/90 backdrop-blur-md border-t border-gray-200 h-[70px] shrink-0 flex justify-between items-center px-6 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <button id="btn-prev-footer" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 shadow-sm active:bg-gray-50 active:scale-95 transition min-w-[100px] justify-center select-none font-bold text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                    上一题
                 </button>
 
-                <!-- 进度 -->
-                <span class="font-mono text-sm font-bold text-gray-400 select-none" id="footer-progress">1 / 10</span>
+                <div class="flex flex-col items-center">
+                    <span class="font-mono text-sm font-bold text-gray-800 select-none" id="footer-progress">1 / 10</span>
+                </div>
 
-                <!-- 下一题 -->
-                <button id="btn-next-footer" class="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-600 border border-blue-600 text-white shadow-md active:bg-blue-700 active:scale-95 transition min-w-[100px] justify-center">
-                    <span class="font-bold text-sm">下一题</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-                    </svg>
+                <button id="btn-next-footer" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 border border-indigo-600 text-white shadow-md active:bg-indigo-700 active:scale-95 transition min-w-[100px] justify-center select-none font-bold text-sm">
+                    下一题
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
                 </button>
             </footer>
 
@@ -250,31 +213,75 @@
     </div>
 
     <script>
-        // === 1. 全局配置 ===
+        // === 全局配置 ===
         let isLargeScreen = window.innerWidth >= 1024;
         let isSidebarOpen = isLargeScreen; 
         let currentIndex = 0;
+        let currentSetKey = 'set1';
         let isAnswerCollapsed = false;
         let isAiCollapsed = false;
         let isAiGenerating = false;
         
-        const aiCache = {};
+        const aiCache = {}; 
         const defaultConfig = { host: "https://api.chatanywhere.tech", key: "sk-P8qMcvE2FfWOmUePWPHaFyYkISs6DWAb55YMvoscHJpktbBp" };
 
-        const cards = [
-            { id: "34-1", subject: "马原 · 科技价值", q: "如何理解“向善惠民，始终是科技创新的价值取向”？", logic: "双刃剑 → 制度保障 → 真理与价值统一", a: `(1) 科技是双刃剑。其作用受<span class="cloze">社会制度</span>(客观)和<span class="cloze">观念认识</span>(主观)影响。正确运用首要有合理的<span class="cloze">社会制度保障</span>。<br><br>(2) 任何成功实践都是<span class="cloze">真理尺度</span>和<span class="cloze">价值尺度</span>的统一。推动科技向善惠民，才符合价值尺度，实现二者的统一。` },
-            { id: "34-2", subject: "马原 · 认识论", q: "为什么在鼓励创新的同时也要宽容失败？", logic: "转化论(真理/谬误) → 过程论(前进/曲折)", a: `(1) <span class="cloze">真理与谬误</span>、成功与失败能相互转化。错误往往是正确的先导。正视并修正错误，能实现谬误向真理的转化（在批判谬误中发展真理）。<br><br>(2) 事物发展是<span class="cloze">前进性与曲折性</span>的统一。既要坚定信心，又要重视曲折。` },
-            { id: "35-1", subject: "毛中特 · 新发展理念", q: "为何唯有新发展理念贯穿全过程，才能实现格局之变？", logic: "理念地位(先导) → 引领高质量发展 → 三大变革", a: `(1) 理念是行动的<span class="cloze">先导</span>，管全局、管根本。新发展理念回答了发展的目的、动力等问题。<br><br>(2) 它引领我们以<span class="cloze">高质量发展</span>为主题，推动<span class="cloze">质量、效率、动力</span>变革，实现质的有效提升和量的合理增长。` },
-            { id: "35-2", subject: "毛中特 · 高质量发展", q: "如何理解以“高质量发展的确定性”应对不确定性？", logic: "高质量定义 → 五大确定性(战略/政策/市场/韧性/环境)", a: `(1) 高质量发展是首要任务，提供<span class="cloze">物质基础</span>，是长治久安的必然要求。<br><br>(2) 五个“确定性”：<span class="cloze">发展战略</span>(方向)、<span class="cloze">宏观政策</span>(平稳)、<span class="cloze">市场空间</span>(潜力)、<span class="cloze">发展韧性</span>(抗压)、<span class="cloze">投资环境</span>(沃土)。` },
-            { id: "36-1", subject: "史纲 · 抗战意义", q: "如何理解抗战具有拯救人类文明、保卫世界和平的意义？", logic: "敌人性质 → 事实(最早/最长/代价最大) → 贡献", a: `(1) 日本法西斯是世界公敌。抗战是为<span class="cloze">国家生存、民族复兴、人类正义</span>而战。<br><br>(2) 事实：<span class="cloze">九一八</span>揭幕；<span class="cloze">七七事变</span>开辟首个大规模战场；中国是消灭日军的<span class="cloze">决定性力量</span>。<br><br>(3) 贡献：参与创建<span class="cloze">联合国</span>。` },
-            { id: "36-2", subject: "史纲 · 强军目标", q: "为什么要建设世界一流军队？", logic: "历史经验(枪杆子) → 现实需求(安全) → 止战逻辑", a: `(1) 历史：走出苦难依赖<span class="cloze">人民军队</span>。南昌起义标志独立领导武装的开端。<br><br>(2) 现实：强军是<span class="cloze">战略支撑</span>。只有军事强大，国家安全才有保障。<span class="cloze">能战方能止战</span>，必须以更强能力捍卫主权。` },
-            { id: "37-1", subject: "思修 · 英烈精神", q: "为何致敬英烈是青年的“精神洗礼”？", logic: "崇尚英雄 → 三观塑造 → 转化动力", a: `(1) 崇尚英雄才会产生英雄。国家不仅需要物质文明，更需要<span class="cloze">精神文明</span>。<br><br>(2) 传承精神是对<span class="cloze">三观</span>的洗礼，能转化为爱国情、强国志、报国行的<span class="cloze">内生动力</span>。` },
-            { id: "37-2", subject: "思修 · 青年担当", q: "青年如何将个人奋斗与国家命运联系？", logic: "理想融合 → 三点要求(心/志/能) → 创新", a: `(1) 实质：坚持<span class="cloze">个人理想与社会理想</span>的有机结合。<br><br>(2) 做法：①怀<span class="cloze">爱国之心</span>(立德之源)；②立<span class="cloze">报国之志</span>(融入大我)；③增强<span class="cloze">国之能</span>(练就本领)。<br><br>(3) 关键：发挥<span class="cloze">创新精神</span>，敢于突破。` },
-            { id: "38-1", subject: "当代 · 全球治理", q: "全球治理倡议与联合国宪章如何“一脉相承”？", logic: "联合国地位 → 倡议五大理念 → 目标一致", a: `(1) 联合国是践行<span class="cloze">多边主义</span>的核心平台。<br><br>(2) 倡议五大理念(<span class="cloze">主权平等、国际法治、多边主义、以人为本、行动导向</span>)阐明了治理原则。<br><br>(3) 二者精神一致，旨在支持联合国发挥核心作用，增强机制有效性。` },
-            { id: "38-2", subject: "当代 · 四大倡议", q: "“四大全球倡议”体现了怎样的外交理念？", logic: "理念(命运共同体) → 破解赤字 → 大国担当", a: `(1) 理念：构建<span class="cloze">人类命运共同体</span>，以天下之利为利。<br><br>(2) 功能：四大倡议分别破解<span class="cloze">和平、发展、安全、治理</span>四大赤字，注入稳定性。<br><br>(3) 意义：彰显<span class="cloze">大国担当</span>，提供战略引领。` }
-        ];
+        // === 核心数据：名师带背优化版 ===
+        const allData = {
+            set1: [
+                { id: "34-1", subject: "马原 · 科技价值", q: "如何理解“向善惠民，始终是科技创新的价值取向”？", logic: "科技双刃剑 → 制度/观念制约 → 真理与价值统一", a: `(1) 科技是推动进步的重要力量，但也是“<span class="cloze">双刃剑</span>”，可能带来消极后果。<br><br>(2) 其作用受<span class="cloze">社会制度</span>(客观)和<span class="cloze">观念认识</span>(主观)影响。正确运用首要有合理的<span class="cloze">社会制度保障</span>，坚持造福人类。<br><br>(3) 任何成功实践都是<span class="cloze">真理尺度</span>和<span class="cloze">价值尺度</span>的统一。只有推动科技向善惠民，才符合价值尺度，实现二者的统一。` },
+                { id: "34-2", subject: "马原 · 认识论", q: "为什么在鼓励创新的同时也要宽容失败？", logic: "转化论(真理/谬误) → 过程论(前进/曲折)", a: `(1) <span class="cloze">真理与谬误</span>、成功与失败在一定条件下相互转化。错误往往是正确的先导。要在批判谬误中发展真理。<br><br>(2) 事物发展是<span class="cloze">前进性与曲折性</span>的统一。既要坚定信心，又要重视曲折，在应对挑战中推动发展。` },
+                { id: "35-1", subject: "毛中特 · 新发展理念", q: "为何唯有新发展理念贯穿全过程，才能实现格局之变？", logic: "理念地位(先导) → 引领高质量发展 → 三大变革", a: `(1) 理念是行动的<span class="cloze">先导</span>，管全局、管根本。新发展理念回答了发展的目的、动力等问题。<br><br>(2) 它引领我们以<span class="cloze">高质量发展</span>为主题，推动<span class="cloze">质量、效率、动力</span>变革，实现质的有效提升和量的合理增长。` },
+                { id: "35-2", subject: "毛中特 · 高质量发展", q: "如何理解以“高质量发展的确定性”应对不确定性？", logic: "高质量定义 → 五大确定性(战略/政策/市场/韧性/环境)", a: `(1) 高质量发展是首要任务，提供<span class="cloze">物质基础</span>，是长治久安的必然要求。<br><br>(2) 五个“确定性”：<span class="cloze">发展战略</span>(方向)、<span class="cloze">宏观政策</span>(平稳)、<span class="cloze">市场空间</span>(潜力)、<span class="cloze">发展韧性</span>(抗压)、<span class="cloze">投资环境</span>(沃土)。` },
+                { id: "36-1", subject: "史纲 · 抗战意义", q: "如何理解抗战具有拯救人类文明、保卫世界和平的意义？", logic: "敌人性质 → 历史事实(最早/最长/代价最大) → 战后贡献", a: `(1) 日本法西斯是世界公敌。抗战是为<span class="cloze">国家生存、民族复兴、人类正义</span>而战。<br><br>(2) 事实：<span class="cloze">九一八</span>揭幕；<span class="cloze">七七事变</span>开辟首个大规模战场；中国是消灭日军的<span class="cloze">决定性力量</span>。<br><br>(3) 贡献：参与创建<span class="cloze">联合国</span>，确立战后新秩序。` },
+                { id: "36-2", subject: "史纲 · 强军目标", q: "为什么要建设世界一流军队？", logic: "历史经验(枪杆子) → 现实需求(安全) → 止战逻辑", a: `(1) 历史：走出苦难依赖<span class="cloze">人民军队</span>。南昌起义标志独立领导武装的开端。<br><br>(2) 现实：强军是<span class="cloze">战略支撑</span>。只有军事强大，国家安全才有保障。<br><br>(3) 辩证：<span class="cloze">能战方能止战</span>，必须以更强能力捍卫主权。` },
+                { id: "37-1", subject: "思修 · 英烈精神", q: "为何致敬英烈是青年的“精神洗礼”？", logic: "崇尚英雄 → 三观塑造 → 转化动力", a: `(1) 崇尚英雄才会产生英雄。国家不仅需要物质文明，更需要<span class="cloze">精神文明</span>。<br><br>(2) 传承精神是对<span class="cloze">三观</span>的洗礼，能转化为爱国情、强国志、报国行的<span class="cloze">内生动力</span>。` },
+                { id: "37-2", subject: "思修 · 青年担当", q: "青年如何将个人奋斗与国家命运联系？", logic: "理想融合 → 三点要求(心/志/能) → 创新", a: `(1) 实质：坚持<span class="cloze">个人理想与社会理想</span>的有机结合。<br><br>(2) 做法：①怀<span class="cloze">爱国之心</span>(立德之源)；②立<span class="cloze">报国之志</span>(融入大我)；③增强<span class="cloze">国之能</span>(练就本领)。<br><br>(3) 关键：发挥<span class="cloze">创新精神</span>，敢于突破。` },
+                { id: "38-1", subject: "当代 · 全球治理", q: "全球治理倡议与联合国宪章如何“一脉相承”？", logic: "联合国地位 → 倡议五大理念 → 目标一致", a: `(1) 联合国是践行<span class="cloze">多边主义</span>的核心平台。<br><br>(2) 倡议五大理念(<span class="cloze">主权平等、国际法治、多边主义、以人为本、行动导向</span>)阐明了治理原则。<br><br>(3) 二者精神一致，旨在支持联合国发挥核心作用，增强机制有效性。` },
+                { id: "38-2", subject: "当代 · 四大倡议", q: "“四大全球倡议”体现了怎样的外交理念？", logic: "理念(命运共同体) → 破解赤字 → 大国担当", a: `(1) 理念：构建<span class="cloze">人类命运共同体</span>，以天下之利为利。<br><br>(2) 功能：四大倡议分别破解<span class="cloze">和平、发展、安全、治理</span>四大赤字，注入稳定性。<br><br>(3) 意义：彰显<span class="cloze">大国担当</span>，提供战略引领。` }
+            ],
+            set2: [
+                { id: "34-1", subject: "马原 · 唯物辩证法", q: "运用矛盾分析方法，说明“学习借鉴并非简单复制”。", logic: "矛盾普遍性/特殊性 → 具体问题具体分析 → 共性与个性统一", a: `(1) <span class="cloze">矛盾具有普遍性</span>，又具有<span class="cloze">特殊性</span>。矛盾的特殊性决定了事物的不同性质。<br><br>(2) 方法论：善于分析矛盾的特殊性，做到<span class="cloze">具体矛盾具体分析</span>。学习借鉴要坚持<span class="cloze">共性和个性的统一</span>，做到<span class="cloze">因地制宜</span>。` },
+                { id: "34-2", subject: "马原 · 辩证思维", q: "分析以“共赢”取代“内卷”所体现的辩证思维。", logic: "对立统一 → 相互联结/促进 → 辩证思维(全面/发展)", a: `(1) 原理：<span class="cloze">对立统一规律</span>是根本规律。矛盾的<span class="cloze">同一性和斗争性</span>相互联结、相辅相成。<br><br>(2) 思维：辩证思维要求用<span class="cloze">联系、发展、全面</span>的观点看问题。事物发展不仅是“相反相成”，更是“相辅相成”，在竞争中合作，以“共赢”取代“内卷”。` },
+                { id: "35-1", subject: "毛中特 · 经济建设", q: "如何理解“坚持扩大内需这个战略基点”？", logic: "战略基点 → 国内市场优势 → 应对外部冲击 → 良性互动", a: `(1) 定位：构建新发展格局是推动高质量发展的<span class="cloze">战略基点</span>。依托<span class="cloze">国内大市场优势</span>，有利于化解外部冲击。<br><br>(2) 路径：坚持扩大内需，以新需求引领新供给，促进<span class="cloze">消费和投资</span>、<span class="cloze">供给和需求</span>良性互动，增强国内大循环内生动力。` },
+                { id: "35-2", subject: "毛中特 · 统一大市场", q: "结合纵深推进全国统一大市场建设，分析“坚持有效市场和有为政府相结合”。", logic: "市场决定性作用 → 政府更好作用 → 辩证统一 → 统一大市场", a: `(1) 关键：处理好政府和市场的关系，使市场起<span class="cloze">决定性作用</span>，<span class="cloze">更好发挥政府作用</span>。<br><br>(2) 结合：建设全国统一大市场，需要政府完善制度规则。让“无形之手”和“有形之手”<span class="cloze">协同发力</span>，实现“放得活”又“管得好”。` },
+                { id: "36-1", subject: "史纲 · 党的领导", q: "如何理解“伟大成就建立在老一辈革命家打下的江山、攒下的家底之上”？", logic: "政治前提(建国) → 制度基础(三大改造) → 物质基础(工业化)", a: `(1) 江山：“打下江山”指成立新中国，实现了从封建专制向<span class="cloze">人民民主</span>的伟大飞跃。<br><br>(2) 家底：“攒下家底”指确立社会主义基本制度，奠定<span class="cloze">根本政治前提和制度基础</span>；建立独立的<span class="cloze">工业体系</span>，奠定<span class="cloze">物质技术基础</span>。` },
+                { id: "36-2", subject: "史纲 · 现代化", q: "说明中国共产党的领导是实现中国式现代化的根本保证。", logic: "规划引领(治国理政) → 根本保证(性质/目标/动力/力量)", a: `(1) 方式：制定中长期规划是党<span class="cloze">治国理政</span>的重要方式（一张蓝图绘到底）。<br><br>(2) 保证：党的领导决定中国式现代化的<span class="cloze">根本性质</span>；确保锚定奋斗目标<span class="cloze">行稳致远</span>；激发<span class="cloze">强劲动力</span>；凝聚<span class="cloze">磅礴力量</span>。` },
+                { id: "37-1", subject: "思修 · 抗战精神", q: "为什么说“传承抗战精神是力量源泉”？", logic: "精神财富(历史) → 精神密码(现实) → 力量源泉(未来)", a: `(1) 历史：抗战精神是弥足珍贵的<span class="cloze">精神财富</span>。<br><br>(2) 现实：它是发展进步的重要<span class="cloze">精神密码</span>，推动国家面貌巨变。<br><br>(3) 未来：它是新征程上创造历史伟业的<span class="cloze">力量源泉</span>，是强国复兴的强劲动力。` },
+                { id: "37-2", subject: "思修 · 劳动精神", q: "为什么要“大力弘扬劳模/劳动/工匠精神”？", logic: "劳动观念 → 职业道德(爱岗敬业) → 核心价值观体现", a: `(1) 观念：劳动是一切幸福的源泉。树立“劳动最光荣”观念。<span class="cloze">爱岗敬业</span>是基本道德规范。<br><br>(2) 体现：三种精神是<span class="cloze">社会主义核心价值观</span>的生动体现，为中国式现代化创造坚实基础。` },
+                { id: "38-1", subject: "当代 · 多边主义", q: "如何理解“多边主义、团结合作是正确答案”？", logic: "全球挑战 → 多边机制 → 联合国初心 → 中国立场", a: `(1) 挑战：全球性问题超越国界，<span class="cloze">多边主义</span>是必然选择。<br><br>(2) 初心：联合国初心是维持和平、促进合作。<br><br>(3) 立场：中国坚定维护<span class="cloze">联合国权威</span>，践行<span class="cloze">真正的多边主义</span>。` },
+                { id: "38-2", subject: "当代 · 和平发展", q: "为什么说“中国是维护和平与发展的‘稳定锚’”？", logic: "和平发展道路 → 经济(一带一路) → 安全(GSI) → 文明(GCI) → 治理(GGI)", a: `(1) 道路：坚持走<span class="cloze">和平发展道路</span>是战略抉择。<br><br>(2) 行动：经济上共建“<span class="cloze">一带一路</span>”；安全上提出<span class="cloze">全球安全倡议</span>；文明上践行<span class="cloze">全球文明倡议</span>；治理上提出<span class="cloze">全球治理倡议</span>。` }
+            ],
+            set3: [
+                { id: "34-1", subject: "马原 · 唯物辩证法", q: "通过“借牧”模式解决难题，蕴含了什么唯物辩证法原理？", logic: "联系普遍性 → 联系条件性 → 创造条件", a: `(1) 普遍性：联系具有<span class="cloze">普遍性</span>，任何事物都处于联系之中。<br><br>(2) 条件性：联系具有<span class="cloze">条件性</span>。在尊重规律前提下，人可以<span class="cloze">创造条件</span>，推动事物向有利方向发展。` },
+                { id: "34-2", subject: "马原 · 创新思维", q: "“借牧”模式对创新思维处理人与自然关系的启示？", logic: "创新思维(突破常规) → 人与自然(自然规律/物质变换)", a: `(1) 思维：创新思维是<span class="cloze">对常规思维的突破</span>，能敏锐发现固有联系并建立新联系。<br><br>(2) 关系：必须遵循<span class="cloze">自然规律</span>，合理调节人与自然之间的物质变换。` },
+                { id: "35-1", subject: "毛中特 · 共同富裕", q: "说明为什么要推动区域协调发展。", logic: "共同富裕(人民性) → 区域协调(解决不平衡)", a: `(1) 目标：中国式现代化是<span class="cloze">全体人民共同富裕</span>的现代化。坚持以人民为中心。<br><br>(2) 途径：推动区域协调发展，是解决<span class="cloze">发展不平衡不充分</span>问题的重要途径，有助于实现发展成果共享。` },
+                { id: "35-2", subject: "毛中特 · 人文经济", q: "人文经济学对我们有何启示？", logic: "两手抓(物质/精神) → 文化赋能(新引擎) → 以人民为中心", a: `(1) 原则：坚持<span class="cloze">物质文明和精神文明</span>协调发展（两手抓）。<br><br>(2) 作用：文化是经济发展的<span class="cloze">新引擎</span>，为人文精神创造文化新动能。<br><br>(3) 目的：坚持<span class="cloze">以人民为中心</span>，繁荣文化事业。` },
+                { id: "36-1", subject: "史纲 · 两个确立", q: "分析“两个确立”的决定性意义。", logic: "遵义会议(转折点) → 核心关键 → 两个确立(决定性因素)", a: `(1) 历史：遵义会议是党的历史上<span class="cloze">生死攸关的转折点</span>，确立了毛泽东同志的领导地位。<br><br>(2) 现实：“两个确立”是新时代取得历史性成就的<span class="cloze">决定性因素</span>，是应对一切不确定性的最大底气。` },
+                { id: "36-2", subject: "史纲 · 长征胜利", q: "如何理解“长征的胜利，是方向和道路的胜利”？", logic: "战略转移 → 理论创新(抗日) → 独立自主", a: `(1) 转折：长征实现了从国内革命战争向<span class="cloze">抗日民族战争</span>的转变。<br><br>(2) 启示：只有立足实际、<span class="cloze">独立自主</span>开辟前进道路，才能不断走向胜利。` },
+                { id: "36-3", subject: "史纲 · 统一战线", q: "中国共产党如何在统一战线中发挥中流砥柱作用？", logic: "中流砥柱(旗帜/统战/持久战) → 独立自主(原则)", a: `(1) 作用：高举抗日旗帜；维护<span class="cloze">抗日民族统一战线</span>；实施<span class="cloze">持久战</span>。<br><br>(2) 原则：必须坚持<span class="cloze">独立自主</span>原则（独立性、绝对领导）。` },
+                { id: "37-1", subject: "思修 · 人生价值", q: "结合支教，说明怎样认识人生价值？", logic: "自我价值 vs 社会价值 → 辩证统一", a: `(1) 关系：人生价值包含<span class="cloze">自我价值和社会价值</span>，二者辩证统一。<br><br>(2) 统一：自我价值是必要条件，社会价值是<span class="cloze">前提和保障</span>。支教行为体现了二者的统一。` },
+                { id: "37-2", subject: "思修 · 职业观", q: "青年应如何选择职业？", logic: "职业理想 → 社会需要 → 劳动观念", a: `(1) 理想：树立崇高的<span class="cloze">职业理想</span>。<br><br>(2) 需要：服从<span class="cloze">社会发展</span>的需要。<br><br>(3) 观念：树立靠<span class="cloze">劳动创造</span>幸福的观念，脚踏实地。` },
+                { id: "38-1", subject: "当代 · 生态文明", q: "为什么说“中国是世界绿色发展的坚定行动派”？", logic: "参与者到引领者 → 承诺(双碳) → 理念(两山)", a: `(1) 转变：实现了由参与者到<span class="cloze">引领者</span>的重大转变。<br><br>(2) 行动：作出<span class="cloze">碳达峰碳中和</span>承诺。<br><br>(3) 方案：提出<span class="cloze">“两山”理念</span>，提供中国方案。` },
+                { id: "38-2", subject: "当代 · 赋能型大国", q: "中国作为“赋能型大国”如何提供“稳定性和确定性”？", logic: "理念(共同体) → 行动(多边主义/倡议) → 经济(引擎) → 开放", a: `(1) 理念：坚持真正的<span class="cloze">多边主义</span>，提出“四大倡议”。<br><br>(2) 经济：是世界经济增长的<span class="cloze">稳定器</span>和动力源。<br><br>(3) 开放：主动<span class="cloze">扩大开放</span>，分享机遇。` }
+            ],
+            set4: [
+                { id: "34-1", subject: "马原 · 实事求是", q: "分析“不唯上、不唯书、只唯实”蕴含的原理。", logic: "实事求是 → 实践决定认识 → 真理绝对性与相对性", a: `(1) 出发点：坚持<span class="cloze">一切从实际出发</span>，反对本本主义。<br><br>(2) 来源：<span class="cloze">实践决定认识</span>。<br><br>(3) 真理：真理是<span class="cloze">绝对性和相对性</span>的统一，要防止教条主义。` },
+                { id: "34-2", subject: "马原 · 科学思维", q: "“地瓜经济”体现了怎样的思维能力？", logic: "辩证思维(全面) → 系统思维(全局) → 战略思维(长远)", a: `(1) 辩证/系统：“跳出自身、着眼全局”体现了<span class="cloze">辩证思维</span>和<span class="cloze">系统思维</span>。<br><br>(2) 战略：“从长周期看当下”体现了<span class="cloze">战略思维</span>（高瞻远瞩）。` },
+                { id: "35-1", subject: "毛中特 · 高质量发展", q: "如何理解“高质量发展关键是科技自立自强和新质生产力”？", logic: "科技自立自强(基石/支撑) → 新质生产力(动力引擎)", a: `(1) 科技：高水平科技自立自强是<span class="cloze">战略基石</span>和<span class="cloze">战略支撑</span>。<br><br>(2) 新质：<span class="cloze">新质生产力</span>以创新为主导，<span class="cloze">全要素生产率</span>提升是核心标志，提供动力引擎。` },
+                { id: "35-2", subject: "毛中特 · 统筹发展和安全", q: "为什么要“坚持统筹发展和安全”？", logic: "两件大事 → 发展(基础) → 安全(保障) → 良性互动", a: `(1) 关系：发展和安全是<span class="cloze">两件大事</span>。<br><br>(2) 定位：发展是安全的<span class="cloze">基础</span>，安全是发展的<span class="cloze">保障</span>。<br><br>(3) 目标：实现<span class="cloze">良性互动</span>（发展中固安全，安全中谋发展）。` },
+                { id: "36-1", subject: "史纲 · 作风建设", q: "“延安作风”为什么能打败“西安作风”？", logic: "伟大工程(作风建设) → 三大作风 → 人心向背", a: `(1) 背景：延安时期是优良作风形成期。<br><br>(2) 内容：形成了<span class="cloze">理论联系实际、密切联系群众、批评和自我批评</span>三大作风。<br><br>(3) 本质：作风关系<span class="cloze">人心向背</span>。` },
+                { id: "36-2", subject: "史纲 · 作风建设", q: "作风建设为什么“必须常抓不懈”？", logic: "历史脉络 → 永恒主题 → 顽固性", a: `(1) 历史：自我革命是跳出历史周期率的<span class="cloze">第二个答案</span>。<br><br>(2) 地位：作风建设是<span class="cloze">永恒主题</span>。<br><br>(3) 特点：作风问题具有<span class="cloze">顽固性、反复性</span>。` },
+                { id: "37-1", subject: "思修 · 公共秩序", q: "为什么“商业热情不能扰乱公共秩序”？", logic: "公共秩序(基础) → 社会公德 → 遵纪守法", a: `(1) 基础：有序的公共生活是社会生产活动的<span class="cloze">重要基础</span>。<br><br>(2) 规范：应遵守<span class="cloze">社会公德</span>和<span class="cloze">遵纪守法</span>。` },
+                { id: "37-2", subject: "思修 · 核心价值观", q: "评选“最美家庭”对弘扬核心价值观有何意义？", logic: "家风与社风 → 核心价值观体现 → 榜样力量", a: `(1) 土壤：家庭是涵养<span class="cloze">社会主义核心价值观</span>的深厚土壤。<br><br>(2) 体现：美德是核心价值观的<span class="cloze">具体体现</span>。<br><br>(3) 作用：发挥<span class="cloze">榜样力量</span>。` },
+                { id: "38-1", subject: "当代 · 共同价值", q: "为什么既要弘扬共同价值，又要尊重文明多样性？", logic: "共同价值(最大公约数) → 现实挑战 → 文明多样性(动力)", a: `(1) 共同价值：是<span class="cloze">最大公约数</span>，是破解困境的支撑。<br><br>(2) 多样性：二者<span class="cloze">并行不悖</span>。文明多样性是进步动力。<br><br>(3) 路径：<span class="cloze">平等交流、互学互鉴</span>。` },
+                { id: "38-2", subject: "当代 · 自由贸易", q: "为什么说“中国是贸易自由化的最大旗手”？", logic: "维护多边体制 → 产业链稳定 → 开放环境", a: `(1) 体制：坚定维护<span class="cloze">多边贸易体制</span>。<br><br>(2) 链条：维护全球<span class="cloze">产业链供应链</span>稳定。<br><br>(3) 环境：实施更加积极主动的<span class="cloze">开放战略</span>。` }
+            ]
+        };
 
-        // === 2. 初始化 ===
+        // 当前卡片集
+        let currentCards = allData.set1;
+
+        // === 3. 初始化 ===
         document.addEventListener('DOMContentLoaded', () => {
             loadSettings();
             applySidebarState();
@@ -282,9 +289,8 @@
             renderNavList();
             setupSwipe();
             setupKeyboard();
-            setupFooterButtons(); // 绑定底栏事件
+            setupFooterButtons();
             
-            // 窗口变化监听
             window.addEventListener('resize', () => {
                 const newIsLarge = window.innerWidth >= 1024;
                 if (newIsLarge !== isLargeScreen) {
@@ -299,7 +305,33 @@
             });
         });
 
-        // === 3. 侧边栏逻辑 ===
+        // === 4. 试卷切换逻辑 ===
+        function switchSet(setKey) {
+            // 更新 UI 状态
+            document.querySelectorAll('.paper-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('inactive');
+            });
+            document.getElementById(`btn-${setKey}`).classList.add('active');
+            document.getElementById(`btn-${setKey}`).classList.remove('inactive');
+            
+            // 更新数据
+            currentSetKey = setKey;
+            currentCards = allData[setKey];
+            currentIndex = 0; // 重置进度
+            
+            // 更新标题
+            const titles = { set1: '肖四(一)', set2: '肖四(二)', set3: '肖四(三)', set4: '肖四(四)' };
+            const typeText = { set1: '重点必背', set2: '查漏补缺', set3: '深度拓展', set4: '防冷门' };
+            
+            document.getElementById('header-title').innerHTML = `${titles[setKey]} <span class="hidden md:inline text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-medium">${typeText[setKey]}</span>`;
+            
+            // 重新渲染
+            renderCard(currentIndex);
+            renderNavList();
+        }
+
+        // === 5. 侧边栏逻辑 ===
         function toggleSidebar() {
             isSidebarOpen = !isSidebarOpen;
             applySidebarState();
@@ -313,12 +345,8 @@
             overlay.classList.add('hidden', 'opacity-0');
 
             if (isLargeScreen) {
-                // 桌面模式 (>=1024px)
-                if (!isSidebarOpen) {
-                    sidebar.classList.add('closed');
-                }
+                if (!isSidebarOpen) sidebar.classList.add('closed');
             } else {
-                // 移动模式 (<1024px)
                 if (isSidebarOpen) {
                     sidebar.classList.add('open');
                     overlay.classList.remove('hidden');
@@ -327,7 +355,7 @@
             }
         }
 
-        // === 4. 手势与键盘 ===
+        // === 6. 手势与键盘控制 ===
         function setupSwipe() {
             let touchStartX = 0;
             let touchStartY = 0;
@@ -357,44 +385,42 @@
         }
 
         function setupFooterButtons() {
-            document.getElementById('btn-prev-footer').addEventListener('click', () => changeCard(-1));
-            document.getElementById('btn-next-footer').addEventListener('click', () => changeCard(1));
+            const prevBtn = document.getElementById('btn-prev-footer');
+            const nextBtn = document.getElementById('btn-next-footer');
+            
+            if(prevBtn) prevBtn.addEventListener('click', () => changeCard(-1));
+            if(nextBtn) nextBtn.addEventListener('click', () => changeCard(1));
         }
 
-        // === 5. 核心渲染 logic ===
+        // === 7. 核心渲染 logic ===
         function renderCard(index) {
-            const card = cards[index];
+            const card = currentCards[index];
             const container = document.getElementById('card-container');
             const footerProgress = document.getElementById('footer-progress');
             
-            // 更新底部进度
-            if(footerProgress) footerProgress.innerText = `${index + 1} / ${cards.length}`;
+            if(footerProgress) footerProgress.innerText = `${index + 1} / ${currentCards.length}`;
 
             isAnswerCollapsed = false;
             isAiCollapsed = false;
 
-            const hasCache = !!aiCache[card.id];
+            const hasCache = !!aiCache[`${currentSetKey}-${card.id}`];
             const aiDisplayClass = hasCache ? "" : "hidden";
 
             container.innerHTML = `
                 <div class="h-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 w-full shrink-0"></div>
                 
-                <!-- 嵌入式内容：底部padding-bottom不再需要特别大，因为footer是外部的 -->
                 <div class="card-content p-6 px-12 md:px-24 md:py-10 flex flex-col h-full overflow-y-auto relative">
                     
-                    <!-- 头部 -->
                     <div class="mb-6 shrink-0 flex justify-between items-center">
                         <span class="bg-indigo-50 text-indigo-700 text-sm md:text-base font-bold px-4 py-2 rounded-xl border border-indigo-100 tracking-wide shadow-sm inline-block">
                             ${card.subject}
                         </span>
                     </div>
                     
-                    <!-- 问题 -->
                     <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-8 leading-snug shrink-0 tracking-tight select-none">
                         ${card.q}
                     </h2>
 
-                    <!-- 逻辑链 -->
                     <div class="bg-blue-50 border-l-8 border-blue-500 p-5 mb-0 rounded-t-xl text-base md:text-lg text-blue-900 font-mono shrink-0 shadow-sm relative group/logic">
                         <div class="flex items-start gap-3">
                             <span class="text-2xl mt-0.5">🔗</span>
@@ -405,17 +431,13 @@
                         </div>
                     </div>
 
-                    <!-- 嵌入式控制栏 -->
                     <div class="flex flex-wrap justify-between items-center py-2 px-3 bg-gray-50 border-x border-b border-gray-100 mb-4 select-none rounded-b-xl shadow-sm">
-                        <!-- 左侧：全显/全隐 -->
                         <div class="flex gap-2 p-1 rounded-lg">
                             <button onclick="toggleAllCloze(true)" class="text-xs md:text-sm text-gray-600 px-3 py-1.5 rounded-md hover:bg-white hover:shadow-sm transition font-bold flex items-center gap-1 active:scale-95">👁️ 全显</button>
                             <button onclick="toggleAllCloze(false)" class="text-xs md:text-sm text-gray-600 px-3 py-1.5 rounded-md hover:bg-white hover:shadow-sm transition font-bold flex items-center gap-1 active:scale-95">🙈 全隐</button>
                         </div>
-
-                        <!-- 右侧：AI & 折叠 -->
                         <div class="flex items-center gap-3">
-                            <button id="btn-ai-trigger" onclick="askAI()" class="flex items-center gap-1.5 text-violet-600 hover:text-violet-700 px-3 py-1.5 rounded-lg text-xs font-bold transition hover:bg-violet-50 active:scale-95">
+                            <button id="btn-ai-trigger" onclick="askAI()" class="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition hover:bg-indigo-50 active:scale-95">
                                 <span>✨</span>
                                 <span>${hasCache ? '查看解析' : '深度解析'}</span>
                             </button>
@@ -428,7 +450,6 @@
                         </div>
                     </div>
 
-                    <!-- 答案区域 -->
                     <div id="answer-wrapper" class="collapsible-grid mb-8">
                         <div class="collapsible-inner">
                             <div class="text-lg md:text-xl text-gray-800 leading-9 relative">
@@ -437,7 +458,6 @@
                         </div>
                     </div>
 
-                    <!-- AI 内容区域 -->
                     <div id="ai-result-box" class="${aiDisplayClass} ai-box bg-white rounded-3xl p-6 md:p-8 border-2 border-purple-100 shrink-0 relative group shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all mb-12">
                         <div class="flex justify-between items-center mb-4 border-b border-purple-50 pb-3">
                             <h4 class="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600 font-extrabold text-base md:text-lg flex items-center gap-2">
@@ -473,12 +493,12 @@
             });
 
             if (hasCache) {
-                renderMarkdownContent(aiCache[card.id], document.getElementById('ai-content'));
+                renderMarkdownContent(aiCache[`${currentSetKey}-${card.id}`], document.getElementById('ai-content'));
             }
             renderNavList();
         }
 
-        // === 6. 交互功能 ===
+        // === 8. 交互功能 ===
         function toggleAnswerVisibility() { toggleCollapse('answer-wrapper', 'toggle-icon'); }
         function toggleAiVisibility() { toggleCollapse('ai-content-wrapper', 'ai-toggle-icon'); }
 
@@ -502,10 +522,10 @@
             });
         }
 
-        // === 7. AI 请求 ===
+        // === 9. AI 请求 ===
         async function askAI(forceRegenerate = false) {
             if (isAiGenerating) return;
-            const card = cards[currentIndex];
+            const card = currentCards[currentIndex];
             const aiBox = document.getElementById('ai-result-box');
             const aiContent = document.getElementById('ai-content');
             const btn = document.getElementById('btn-ai-trigger');
@@ -513,7 +533,9 @@
             const aiWrapper = document.getElementById('ai-content-wrapper');
             if(aiWrapper && aiWrapper.classList.contains('collapsed')) toggleAiVisibility();
 
-            if (!forceRegenerate && aiCache[card.id]) {
+            const cacheKey = `${currentSetKey}-${card.id}`;
+
+            if (!forceRegenerate && aiCache[cacheKey]) {
                 aiBox.classList.remove('hidden');
                 setTimeout(() => { const container = document.querySelector('.card-content'); container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }); }, 100);
                 return;
@@ -521,7 +543,7 @@
 
             isAiGenerating = true;
             const originalBtnHtml = btn.innerHTML;
-            btn.innerHTML = `<svg class="animate-spin h-3 w-3 text-violet-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 思考中...`;
+            btn.innerHTML = `<svg class="animate-spin h-3 w-3 text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 思考中...`;
             btn.classList.add('opacity-70', 'cursor-not-allowed');
 
             aiBox.classList.remove('hidden');
@@ -561,7 +583,7 @@
                 const data = await response.json();
                 const reply = data.choices[0].message.content;
                 
-                aiCache[card.id] = reply;
+                aiCache[cacheKey] = reply;
                 btn.innerHTML = `<span>📑 查看解析</span>`;
                 renderMarkdownContent(reply, aiContent);
 
@@ -574,24 +596,17 @@
             }
         }
 
-        // === 8. 翻页逻辑 (循环翻页) ===
-        function changeCard(dir) {
-            // 循环翻页计算
-            currentIndex = (currentIndex + dir + cards.length) % cards.length;
-            renderCard(currentIndex);
-        }
-
         function renderNavList() {
             const list = document.getElementById('nav-list');
             const groups = {};
-            cards.forEach((card, idx) => {
+            currentCards.forEach((card, idx) => {
                 const groupKey = card.id.split('-')[0];
                 const subject = card.subject.split(' · ')[0];
                 if (!groups[groupKey]) groups[groupKey] = { title: `第${groupKey}题 ${subject}`, items: [] };
                 groups[groupKey].items.push({ ...card, originalIndex: idx });
             });
 
-            const currentCardId = cards[currentIndex].id.split('-')[0];
+            const currentCardId = currentCards[currentIndex].id.split('-')[0];
             list.innerHTML = Object.values(groups).map(group => {
                 const isActive = group.items.some(i => i.originalIndex === currentIndex);
                 const expandedClass = isActive ? 'expanded' : '';
@@ -617,6 +632,12 @@
             currentIndex = idx;
             renderCard(currentIndex);
             if (window.innerWidth < 1024) { isSidebarOpen = false; applySidebarState(); }
+        }
+
+        function changeCard(dir) {
+            // 循环翻页计算
+            currentIndex = (currentIndex + dir + currentCards.length) % currentCards.length;
+            renderCard(currentIndex);
         }
 
         function loadSettings() {
